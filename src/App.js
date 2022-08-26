@@ -1,4 +1,6 @@
-import React, { useMemo, useRef, useState } from 'react';
+import axios from 'axios';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import PostService from './API/PostService';
 import ClassCounter from './components/ClassCounter';
 import Counter from './components/Counter';
 import PostFilter from './components/PostFilter';
@@ -9,36 +11,31 @@ import MyButton from './components/UI/button/MyButton';
 import MyInput from './components/UI/input/MyInput';
 import MyModal from './components/UI/MyModal/MyModal';
 import MySelect from './components/UI/select/MySelect';
+import { usePosts } from './hooks/usePosts';
 import './styles/App.css';
 
 function App() {
-  const [posts, setPosts] = useState([
-    { id: 1, title: 'аа', body: 'бб' },
-    { id: 2, title: 'гг 2', body: 'аа' },
-    { id: 3, title: 'вв 3', body: 'Description' },
-  ]);
-
+  const [posts, setPosts] = useState([]);
   const [filter, setFilter] = useState({
     sort: '',
     query: '',
   });
   const [modal, setModal] = useState(false);
+  const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query);
 
-  const sortedPosts = useMemo(() => {
-    if (filter.sort) {
-      return [...posts].sort((a, b) => a[filter.sort].localeCompare(b[filter.sort]));
-    }
-    return posts;
-  }, [filter.sort, posts]);
-
-  const sortedAndSearchedPosts = useMemo(() => {
-    return sortedPosts.filter((post) => post.title.toLowerCase().includes(filter.query.toLowerCase()));
-  }, [filter.query, sortedPosts]);
+  useEffect(() => {
+    fetchPosts();
+  }, []);
 
   const createPost = (newPost) => {
     setPosts([...posts, newPost]);
     setModal(false);
   };
+
+  async function fetchPosts() {
+    const posts = await PostService.getAll();
+    setPosts(posts);
+  }
 
   const removePost = (post) => {
     setPosts(posts.filter((p) => p.id !== post.id));
@@ -46,6 +43,7 @@ function App() {
 
   return (
     <div className='App'>
+      <button onClick={fetchPosts}>GET POSTS</button>
       <MyButton style={{ marginTop: '30px' }} onClick={() => setModal(true)}>
         Создать пользователя
       </MyButton>
