@@ -12,8 +12,10 @@ import MyInput from './components/UI/input/MyInput';
 import Loader from './components/UI/Loader/Loader';
 import MyModal from './components/UI/MyModal/MyModal';
 import MySelect from './components/UI/select/MySelect';
+import { useFetching } from './hooks/useFetching';
 import { usePosts } from './hooks/usePosts';
 import './styles/App.css';
+import { getPageCount, getPagesArray } from './utils/pages';
 
 function App() {
   const [posts, setPosts] = useState([]);
@@ -22,8 +24,18 @@ function App() {
     query: '',
   });
   const [modal, setModal] = useState(false);
+  const [totalPages, setTotalPages] = useState(0);
+  const [limit, setLimit] = useState(10);
+  const [page, setPage] = useState(1);
   const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query);
-  const [isPostsLoading, setIsPostsLoading] = useState(false);
+  let pagesArray = getPagesArray(totalPages);
+
+  const [fetchPosts, isPostsLoading, postError] = useFetching(async () => {
+    const response = await PostService.getAll(limit, page);
+    setPosts(response.data);
+    const totalCount = response.headers['x-total-count'];
+    setTotalPages(getPageCount(totalCount, limit));
+  });
 
   useEffect(() => {
     fetchPosts();
@@ -34,17 +46,13 @@ function App() {
     setModal(false);
   };
 
-  async function fetchPosts() {
-    setIsPostsLoading(true);
-    setTimeout(async () => {
-      const posts = await PostService.getAll();
-      setPosts(posts);
-      setIsPostsLoading(false);
-    }, 1000);
-  }
-
   const removePost = (post) => {
     setPosts(posts.filter((p) => p.id !== post.id));
+  };
+
+  const changePage = (page) => {
+    setPage(page);
+    fetchPosts();
   };
 
   return (
@@ -58,6 +66,7 @@ function App() {
       </MyModal>
       <hr style={{ margin: '15px 0' }} />
       <PostFilter filter={filter} setFilter={setFilter} />
+      {postError && <h1>Произошла ошибка ${postError}</h1>}
       {isPostsLoading ? (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '50px' }}>
           <Loader />
@@ -65,6 +74,13 @@ function App() {
       ) : (
         <PostList remove={removePost} posts={sortedAndSearchedPosts} title='Посты про JS' />
       )}
+      <div className='page__wrapper'>
+        {pagesArray.map((p) => (
+          <span onClick={() => changePage(p)} key={p} className={page === p ? 'page page__current' : 'page'}>
+            {p}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
